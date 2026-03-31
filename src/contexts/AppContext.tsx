@@ -101,7 +101,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const fetchHospitals = async () => {
       try {
         const { data } = await api.get('/hospitals');
-        setHospitals(data);
+        if (data && data.length > 0) {
+          setHospitals(data);
+        } else {
+          // Fallback for Expo if backend seeding is still in progress
+          console.log('Using demo fallback hospitals...');
+          setHospitals([
+            { id: 'h1', name: 'City General Hospital', location: 'Elluru', address: '123 Elluru Main Road', departments: ['Cardiology', 'General Medicine'] },
+            { id: 'h2', name: 'Metro Healthcare Center', location: 'Elluru', address: '45 Elluru Avenue', departments: ['Neurology', 'Dental'] }
+          ]);
+        }
       } catch (err) {
         console.error('Error fetching hospitals:', err);
       }
