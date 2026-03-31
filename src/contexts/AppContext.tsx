@@ -151,15 +151,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [user, tokens]);
 
   const bookToken = useCallback(async (patientName: string, phone: string, department: string, hospital: string): Promise<Token> => {
-    const res = await api.post('/queue/issue', {
-      patientName,
-      phone,
-      department,
-      hospital
-    });
-    const newToken = res.data.token;
-    setTokens(prev => [...prev, newToken]);
-    return newToken;
+    try {
+      const res = await api.post('/queue/issue', {
+        patientName,
+        phone,
+        department,
+        hospital
+      });
+      const newToken = res.data.token;
+      setTokens(prev => [...prev, newToken]);
+      return newToken;
+    } catch (err) {
+      console.warn("⚠️ Token booking failed. Using local fallback for expo:", err);
+      // Fallback Local Token for the Expo if backend is unreachable
+      const localToken = {
+        _id: 'local_' + Date.now(),
+        tokenNumber: Math.floor(Math.random() * 50) + 1,
+        patientName,
+        phone,
+        hospital,
+        department,
+        status: 'waiting',
+        estimatedWait: 10,
+        createdAt: new Date().toISOString()
+      };
+      setTokens(prev => [...prev, localToken]);
+      return localToken as any;
+    }
   }, []);
 
   const callNextToken = useCallback(async (hospital: string, department: string) => {

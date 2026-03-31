@@ -36,9 +36,7 @@ const UserDashboard = () => {
     }
   }, [getActiveUserToken, step, tokens, user]);
 
-  const filteredHospitals = selectedLocation.trim()
-    ? hospitals.filter(h => h.location.toLowerCase() === selectedLocation.trim().toLowerCase())
-    : [];
+  const filteredHospitals = hospitals; // Show all hospitals for the demo
   const hospital = filteredHospitals.find(h => h.name === selectedHospital);
 
   const handleBook = async (e: React.FormEvent) => {
@@ -198,17 +196,14 @@ const UserDashboard = () => {
                   </div>
 
                   <div>
-                    <Label>Location</Label>
+                    <Label>Location (Optional)</Label>
                     <Input
                       value={selectedLocation}
                       onChange={e => {
                         setSelectedLocation(e.target.value);
-                        setSelectedHospital('');
-                        setSelectedDepartment('');
                       }}
-                      placeholder="Enter location (Elluru only)"
+                      placeholder="Search by location..."
                       className="mt-1"
-                      required
                     />
                   </div>
 
@@ -222,9 +217,6 @@ const UserDashboard = () => {
                         {filteredHospitals.map(h => <SelectItem key={h.id} value={h.name}>{h.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                    {selectedLocation.trim() && filteredHospitals.length === 0 && (
-                      <p className="text-sm text-destructive mt-2">No hospital matches this location. Enter Elluru only.</p>
-                    )}
                   </div>
 
                   {hospital && (
