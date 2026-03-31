@@ -2,7 +2,7 @@ import axios from 'axios';
 import { auth } from '../firebase';
 
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://sureshgavidi-smart-queue-backend.onrender.com/api',
 });
 
 // Interceptor to add Firebase ID Token to all requests
