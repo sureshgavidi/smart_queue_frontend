@@ -257,13 +257,13 @@ const UserDashboard = () => {
               <div className="glass-card p-8 text-center space-y-6">
                 <div>
                   <p className="text-sm text-muted-foreground uppercase tracking-wider">Your Token Number</p>
-                  <div className="token-badge text-4xl mt-2 px-8 py-4">#{bookedToken.tokenNumber}</div>
+                  <div className="token-badge text-4xl mt-2 px-8 py-4">#{bookedToken?.tokenNumber}</div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-muted rounded-xl p-4">
                     <Clock className="w-5 h-5 text-primary mx-auto mb-1" />
-                    <p className="text-2xl font-bold text-foreground">{bookedToken.estimatedWait} min</p>
+                    <p className="text-2xl font-bold text-foreground">{bookedToken?.estimatedWait || 0} min</p>
                     <p className="text-xs text-muted-foreground">Est. Wait Time</p>
                   </div>
                   <div className="bg-muted rounded-xl p-4">
@@ -274,9 +274,9 @@ const UserDashboard = () => {
                 </div>
 
                 <div className="text-left space-y-2 bg-accent rounded-xl p-4">
-                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">Hospital</span><span className="font-medium text-foreground">{bookedToken.hospital}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">Department</span><span className="font-medium text-foreground">{bookedToken.department}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">Patient</span><span className="font-medium text-foreground">{bookedToken.patientName}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">Hospital</span><span className="font-medium text-foreground">{bookedToken?.hospital}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">Department</span><span className="font-medium text-foreground">{bookedToken?.department}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">Patient</span><span className="font-medium text-foreground">{bookedToken?.patientName}</span></div>
                 </div>
 
                 <Button onClick={() => setStep('tracking')} className="w-full gradient-primary text-primary-foreground h-12 font-semibold">
@@ -290,7 +290,7 @@ const UserDashboard = () => {
             <motion.div key="tracking" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
               <div className="mb-8">
                 <h1 className="text-3xl font-display font-bold text-foreground">Your Journey</h1>
-                <p className="text-muted-foreground mt-1">{bookedToken.hospital} — {bookedToken.department}</p>
+                <p className="text-muted-foreground mt-1">{bookedToken?.hospital} — {bookedToken?.department}</p>
               </div>
 
               {/* Live status card */}
@@ -307,7 +307,7 @@ const UserDashboard = () => {
                   </div>
                   <div className="scale-110 relative z-10 bg-card rounded-xl p-2 shadow-lg border border-primary/20">
                     <p className="text-sm text-primary font-semibold">Your Token</p>
-                    <p className="text-4xl font-bold text-foreground font-display">#{bookedToken.tokenNumber}</p>
+                    <p className="text-4xl font-bold text-foreground font-display">#{bookedToken?.tokenNumber}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Ahead</p>
@@ -334,7 +334,7 @@ const UserDashboard = () => {
                   <div>
                     <h3 className="font-semibold text-foreground">Why am I waiting?</h3>
                     <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
-                      There are currently {peopleAhead} tokens ahead of you. Based on an average service time of 8 minutes per patient, your estimated wait is {bookedToken.estimatedWait} minutes.
+                      There are currently {peopleAhead} tokens ahead of you. Based on an average service time of 8 minutes per patient, your estimated wait is {bookedToken?.estimatedWait || 0} minutes.
                     </p>
                   </div>
                 </div>
@@ -368,11 +368,11 @@ const UserDashboard = () => {
                   </div>
 
                   <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                    <div className={`flex items-center justify-center w-8 h-8 rounded-full border-4 border-card font-bold shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 ${bookedToken.status === 'serving' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                    <div className={`flex items-center justify-center w-8 h-8 rounded-full border-4 border-card font-bold shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 ${bookedToken?.status === 'serving' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
                       <Stethoscope className="w-4 h-4" />
                     </div>
-                    <div className={`w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded border ${bookedToken.status === 'serving' ? 'bg-accent border-primary/20' : 'bg-card border-border'}`}>
-                      <h4 className={`font-bold ${bookedToken.status === 'serving' ? 'text-foreground' : 'text-muted-foreground'}`}>At Counter</h4>
+                    <div className={`w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded border ${bookedToken?.status === 'serving' ? 'bg-accent border-primary/20' : 'bg-card border-border'}`}>
+                      <h4 className={`font-bold ${bookedToken?.status === 'serving' ? 'text-foreground' : 'text-muted-foreground'}`}>At Counter</h4>
                       <p className="text-sm text-muted-foreground">Now serving.</p>
                     </div>
                   </div>
