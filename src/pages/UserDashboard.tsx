@@ -5,15 +5,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Activity, Clock, Users, Ticket, LogOut, ChevronRight, AlertCircle, CheckCircle2, Hospital, Info, Stethoscope } from 'lucide-react';
+import { Activity, Clock, Users, Ticket, LogOut, ChevronRight, AlertCircle, CheckCircle2, Hospital, Info, Stethoscope, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { Token } from '@/contexts/AppContext';
 
 const UserDashboard = () => {
-  const { user, tokens, currentToken, hospitals, loading, bookToken, logout, getActiveUserToken, clearTokenAlert } = useApp();
+  const { user, tokens, currentToken, hospitals, loading, isProcessing, setIsProcessing, bookToken, logout, getActiveUserToken, clearTokenAlert } = useApp();
   const navigate = useNavigate();
   const [step, setStep] = useState<'form' | 'booked' | 'tracking'>('form');
   const [bookedToken, setBookedToken] = useState<Token | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const [patientName, setPatientName] = useState(user?.name || '');
   const [phone, setPhone] = useState('');
@@ -41,12 +43,32 @@ const UserDashboard = () => {
 
   const handleBook = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsProcessing(true);
+    setError(null);
     try {
+      // 1. Initial State: Validating Intent
+      console.log("Guided Flow: Initiating token issuance...");
       const token = await bookToken(patientName, phone, selectedDepartment, selectedHospital);
+      
+      // 2. State Transition: Confirming State
       setBookedToken(token);
       setStep('booked');
+      
+      // 3. Automated Journey: Enforced Outcome
+      // Auto-transition to tracking after 4 seconds of 'Success acknowledgment'
+      setTimeout(() => {
+        setIsRedirecting(true);
+        setTimeout(() => {
+          setStep('tracking');
+          setIsRedirecting(false);
+        }, 800);
+      }, 3500);
+
     } catch (err: any) {
-      alert(err.message);
+      // Explicit Error State: Resolution Needed
+      setError(err.message || "An unexpected error interrupted your booking journey.");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -120,12 +142,37 @@ const UserDashboard = () => {
   const currentServing = bookedToken ? currentToken[`${bookedToken.hospital}-${bookedToken.department}`] || 0 : 0;
 
   const tokensAheadList = bookedToken
-    ? tokens.filter(t => t.hospital === bookedToken.hospital && t.department === bookedToken.department && t.status === 'waiting' && t.tokenNumber < bookedToken.tokenNumber)
+    ? tokens.filter(t => t.hospital === bookedToken.hospital && t.department === bookedToken.department && t.status === 'waiting' && t.tokenNumber < (bookedToken.tokenNumber || 0))
     : [];
   const peopleAhead = tokensAheadList.length;
 
+  if (loading && !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground font-medium">Preparing your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user && !loading) {
+    navigate('/login');
+    return null;
+  }
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
+      {isRedirecting && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-md flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-xl font-display font-medium text-foreground">Moving to Live Journey...</p>
+          </div>
+        </motion.div>
+      )}
+
       {/* Header */}
       <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container flex items-center justify-between h-16">
@@ -145,6 +192,16 @@ const UserDashboard = () => {
       </header>
 
       <main className="container py-8 max-w-2xl">
+        {error && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 mb-6 flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-destructive" />
+            <div>
+              <p className="font-semibold text-destructive">Resolution Needed</p>
+              <p className="text-sm text-destructive/80">{error}</p>
+            </div>
+          </motion.div>
+        )}
+
         {bookedToken?.alertMessage && (
           <div className="glass-card p-4 mb-6 border-l-4 border-warning/60 bg-warning/5">
             <div className="flex items-start justify-between gap-4">
@@ -237,8 +294,18 @@ const UserDashboard = () => {
                   )}
                 </div>
 
-                <Button type="submit" className="w-full gradient-primary text-primary-foreground h-12 text-base font-semibold" disabled={!selectedDepartment || !isPhoneValid}>
-                  Generate Token <ChevronRight className="w-4 h-4 ml-2" />
+                <Button 
+                  type="submit" 
+                  className="w-full gradient-primary text-primary-foreground h-12 text-base font-semibold" 
+                  disabled={!selectedDepartment || !isPhoneValid || isProcessing}
+                >
+                  {isProcessing ? (
+                    <span className="flex items-center gap-2">
+                       <Loader2 className="w-4 h-4 animate-spin" /> Issuing Authoritative Token...
+                    </span>
+                  ) : (
+                    <>Generate Token <ChevronRight className="w-4 h-4 ml-2" /></>
+                  )}
                 </Button>
               </form>
             </motion.div>

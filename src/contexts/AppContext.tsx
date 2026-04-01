@@ -54,6 +54,8 @@ interface AppContextType {
   sendUserAlert: (tokenId: string, message: string) => void;
   clearTokenAlert: (tokenId: string) => void;
   getActiveUserToken: () => Token | undefined;
+  isProcessing: boolean;
+  setIsProcessing: (val: boolean) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -73,6 +75,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [currentToken, setCurrentToken] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Persistence: Load tokens from localStorage on init
+  useEffect(() => {
+    const savedTokens = localStorage.getItem('medi_queue_tokens');
+    if (savedTokens) {
+      try {
+        const parsed = JSON.parse(savedTokens);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          console.log("Restored tokens from persistence");
+          setTokens(parsed);
+        }
+      } catch (e) {
+        console.warn("Failed to restore saved tokens");
+      }
+    }
+  }, []);
+
+  // Persistence: Save tokens whenever they change
+  useEffect(() => {
+    if (tokens.length > 0) {
+      localStorage.setItem('medi_queue_tokens', JSON.stringify(tokens));
+    }
+  }, [tokens]);
 
   // Sync auth state with the backend
   useEffect(() => {
@@ -159,13 +185,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         hospital
       });
       const newToken = res.data.token;
+      // Ensure id consistency
+      if (newToken && newToken._id && !newToken.id) newToken.id = newToken._id;
       setTokens(prev => [...prev, newToken]);
       return newToken;
     } catch (err) {
       console.warn("⚠️ Token booking failed. Using local fallback for expo:", err);
-      // Fallback Local Token for the Expo if backend is unreachable
+      const id = 'local_' + Date.now();
       const localToken = {
-        _id: 'local_' + Date.now(),
+        id,
+        _id: id,
         tokenNumber: Math.floor(Math.random() * 50) + 1,
         patientName,
         phone,
@@ -175,35 +204,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         estimatedWait: 10,
         createdAt: new Date().toISOString()
       };
-      setTokens(prev => [...prev, localToken]);
+      setTokens(prev => [...prev, localToken as any]);
       return localToken as any;
     }
   }, []);
 
   const callNextToken = useCallback(async (hospital: string, department: string) => {
-    const { data } = await api.post('/queue/advance', { hospital, department });
-    if (data.nextToken) {
-      setCurrentToken(prev => ({ 
-        ...prev, 
-        [`${hospital}-${department}`]: data.nextToken.tokenNumber 
+    try {
+      const { data } = await api.post('/queue/advance', { hospital, department });
+      if (data.nextToken) {
+        setCurrentToken(prev => ({ 
+          ...prev, 
+          [`${hospital}-${department}`]: data.nextToken.tokenNumber 
+        }));
+      }
+    } catch (err) {
+      console.warn("Advance queue failed, using local increment");
+      setCurrentToken(prev => ({
+        ...prev,
+        [`${hospital}-${department}`]: (prev[`${hospital}-${department}`] || 0) + 1
       }));
     }
-    // Refresh admin tokens if needed (admin view logic would go here)
   }, []);
 
   const skipToken = useCallback(async (tokenId: string) => {
-    await api.post('/queue/admin/skip', { tokenId });
-    setTokens(prev => prev.map(t => t.id === tokenId ? { ...t, status: 'skipped' as const } : t));
+    try {
+      await api.post('/queue/admin/skip', { tokenId });
+    } catch (e) {}
+    setTokens(prev => prev.map(t => (t.id === tokenId || (t as any)._id === tokenId) ? { ...t, status: 'skipped' as const } : t));
   }, []);
 
   const setPriorityToken = useCallback(async (tokenId: string) => {
-    await api.post('/queue/admin/priority', { tokenId });
-    setTokens(prev => prev.map(t => t.id === tokenId ? { ...t, priority: true } : t));
+    try {
+      await api.post('/queue/admin/priority', { tokenId });
+    } catch (e) {}
+    setTokens(prev => prev.map(t => (t.id === tokenId || (t as any)._id === tokenId) ? { ...t, priority: true } : t));
   }, []);
 
   const delayToken = useCallback((tokenId: string, minutes: number) => {
-    // This could also be an API call if implemented on backend
-    setTokens(prev => prev.map(t => t.id === tokenId ? {
+    setTokens(prev => prev.map(t => (t.id === tokenId || (t as any)._id === tokenId) ? {
       ...t,
       estimatedWait: (t.estimatedWait || 0) + minutes,
       alertMessage: `Your token has been delayed by ${minutes} minutes.`,
@@ -213,7 +252,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const sendUserAlert = useCallback((tokenId: string, message: string) => {
-    setTokens(prev => prev.map(t => t.id === tokenId ? {
+    setTokens(prev => prev.map(t => (t.id === tokenId || (t as any)._id === tokenId) ? {
       ...t,
       alertMessage: message,
       alertType: 'reminder',
@@ -222,21 +261,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const clearTokenAlert = useCallback((tokenId: string) => {
-    setTokens(prev => prev.map(t => t.id === tokenId ? { ...t, alertMessage: undefined, alertType: undefined, alertSeen: true } : t));
+    setTokens(prev => prev.map(t => (t.id === tokenId || (t as any)._id === tokenId) ? { ...t, alertMessage: undefined, alertType: undefined, alertSeen: true } : t));
   }, []);
 
-  // For simplicity keeping the stubs but connecting core flows
   const login = useCallback((): boolean => { return false; }, []);
   const signup = useCallback((): boolean => { return false; }, []);
 
-  if (loading) return null; // Or a loading spinner
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground font-medium">Initializing MediQueue...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AppContext.Provider value={{ 
       user, tokens, currentToken, hospitals, 
       login, loginWithGoogle, signup, logout, 
       bookToken, callNextToken, skipToken, setPriorityToken, 
-      delayToken, sendUserAlert, clearTokenAlert, getActiveUserToken 
+      delayToken, sendUserAlert, clearTokenAlert, getActiveUserToken,
+      isProcessing, setIsProcessing
     }}>
       {children}
     </AppContext.Provider>
